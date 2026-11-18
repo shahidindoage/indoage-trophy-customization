@@ -257,13 +257,38 @@ function CustomizeApp() {
   useEffect(() => {
     if (typeof window === 'undefined') return
 
+    let lastSentHeight = 0
+    let isMeasuring = false
+
     const sendHeight = () => {
+      if (isMeasuring) return // prevent re-entrant calls
+      isMeasuring = true
+
+      // Temporarily reset the body height so we measure the *natural* content
+      // height, not whatever the parent just told the iframe to be.
+      const prevBodyHeight = document.body.style.height
+      const prevHtmlHeight = document.documentElement.style.height
+      document.body.style.height = 'auto'
+      document.documentElement.style.height = 'auto'
+
       const h = Math.max(
         document.body.scrollHeight,
         document.documentElement.scrollHeight,
         document.body.offsetHeight,
         document.documentElement.offsetHeight,
       )
+
+      // Restore
+      document.body.style.height = prevBodyHeight
+      document.documentElement.style.height = prevHtmlHeight
+
+      isMeasuring = false
+
+      // Only post if height actually changed by more than 2px (avoids
+      // sub-pixel measurement noise creating an infinite loop).
+      if (Math.abs(h - lastSentHeight) < 2) return
+      lastSentHeight = h
+
       // Only post if there's a parent (i.e., we're embedded in an iframe)
       if (window.parent && window.parent !== window) {
         window.parent.postMessage({ type: 'customize-resize', height: h }, '*')
@@ -271,21 +296,31 @@ function CustomizeApp() {
     }
 
     // Send initial height after a tick (let layout settle)
-    const t1 = window.setTimeout(sendHeight, 100)
-    const t2 = window.setTimeout(sendHeight, 500)
-    const t3 = window.setTimeout(sendHeight, 1500)
+    const t1 = window.setTimeout(sendHeight, 200)
+    const t2 = window.setTimeout(sendHeight, 800)
 
     // ResizeObserver — re-measure when the DOM changes size
-    const ro = new ResizeObserver(() => sendHeight())
+    // Use a debounce so we don't fire on every animation frame.
+    let roTimer: number | undefined
+    const ro = new ResizeObserver(() => {
+      window.clearTimeout(roTimer)
+      roTimer = window.setTimeout(sendHeight, 150)
+    })
     ro.observe(document.body)
-    ro.observe(document.documentElement)
 
     // Re-measure on window resize (mobile address bar show/hide, orientation)
-    window.addEventListener('resize', sendHeight)
+    let winTimer: number | undefined
+    const onWinResize = () => {
+      window.clearTimeout(winTimer)
+      winTimer = window.setTimeout(sendHeight, 200)
+    }
+    window.addEventListener('resize', onWinResize)
 
     // Listen for parent asking us to re-measure
     const onMessage = (e: MessageEvent) => {
       if (e.data && e.data.type === 'customize-measure') {
+        // Reset lastSentHeight so we always send after an explicit request
+        lastSentHeight = 0
         sendHeight()
       }
     }
@@ -294,9 +329,10 @@ function CustomizeApp() {
     return () => {
       window.clearTimeout(t1)
       window.clearTimeout(t2)
-      window.clearTimeout(t3)
+      window.clearTimeout(roTimer)
+      window.clearTimeout(winTimer)
       ro.disconnect()
-      window.removeEventListener('resize', sendHeight)
+      window.removeEventListener('resize', onWinResize)
       window.removeEventListener('message', onMessage)
     }
   }, [])
