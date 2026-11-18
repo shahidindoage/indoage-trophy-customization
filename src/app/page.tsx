@@ -723,7 +723,7 @@ function CustomizeApp() {
           borderColor: TM_BORDER,
         }}
       >
-     
+       
 
         {/* Breadcrumb strip */}
         <div
@@ -753,7 +753,9 @@ function CustomizeApp() {
       </header>
 
       {/* Main layout */}
-      <main className="mx-auto w-full max-w-[1300px] flex-1 flex flex-col lg:flex-row gap-8 p-4 sm:p-6 lg:p-8 pb-24 sm:pb-8">
+      <main className="mx-auto w-full max-w-[1300px] flex-1 flex flex-col gap-8 p-4 sm:p-6 lg:p-8 pb-8">
+        {/* Top row: canvas + right panel, side-by-side on desktop */}
+        <div className="flex flex-col lg:flex-row gap-8">
         {/* Canvas area */}
         <section className="flex-1 flex flex-col min-h-0">
           {/* Eyebrow + product title (serif) */}
@@ -827,7 +829,7 @@ function CustomizeApp() {
               {/* Fabric canvas wrapper */}
               <div
                 ref={canvasContainerRef}
-                className="relative flex-1 min-h-[320px] sm:min-h-[440px] border overflow-hidden"
+                className="relative flex-1 min-h-[280px] sm:min-h-[440px] border overflow-hidden"
                 style={{
                   borderColor: TM_BORDER,
                   backgroundColor: '#F4F4F4',
@@ -941,44 +943,8 @@ function CustomizeApp() {
             </div>
           </div>
 
-          {/* Approval + Save bar */}
-          <div
-            className="mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border"
-            style={{
-              borderColor: TM_BORDER,
-              background: '#FFFFFF',
-            }}
-          >
-            <div className="flex items-center gap-2.5">
-              <Checkbox
-                id="approve"
-                checked={isApproved}
-                onCheckedChange={(v) => setIsApproved(v === true)}
-                className="rounded-none border-[1.5px]"
-                style={{ borderColor: TM_NAVY }}
-              />
-              <label
-                htmlFor="approve"
-                className="text-[13px] cursor-pointer"
-                style={{ color: TM_NAVY_INK, fontFamily: FONT_SANS }}
-              >
-                I have reviewed the design and approve it.
-              </label>
-            </div>
-            <button
-              type="button"
-              onClick={handleSaveAndContinue}
-              disabled={!isApproved}
-              className="px-6 py-3 text-white text-[12px] font-semibold uppercase tracking-[0.15em] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              style={{
-                background: isApproved ? TM_RED : '#9CA3AF',
-                fontFamily: FONT_SANS,
-                borderRadius: '2px',
-              }}
-            >
-              Save and continue
-            </button>
-          </div>
+          {/* Approval + Save bar moved out of <section> below, so it can be reordered on mobile */}
+
         </section>
 
         {/* Right panel (desktop) */}
@@ -1200,6 +1166,46 @@ function CustomizeApp() {
             Tip: double-click text on the canvas to edit it. Drag, resize, and rotate elements directly.
           </div>
         </aside>
+        </div>{/* end top row */}
+
+        {/* Approval + Save bar — full width, below both columns on desktop, at bottom on mobile */}
+        <div
+          className="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border"
+          style={{
+            borderColor: TM_BORDER,
+            background: '#FFFFFF',
+          }}
+        >
+          <div className="flex items-center gap-2.5">
+            <Checkbox
+              id="approve"
+              checked={isApproved}
+              onCheckedChange={(v) => setIsApproved(v === true)}
+              className="rounded-none border-[1.5px]"
+              style={{ borderColor: TM_NAVY }}
+            />
+            <label
+              htmlFor="approve"
+              className="text-[13px] cursor-pointer"
+              style={{ color: TM_NAVY_INK, fontFamily: FONT_SANS }}
+            >
+              I have reviewed the design and approve it.
+            </label>
+          </div>
+          <button
+            type="button"
+            onClick={handleSaveAndContinue}
+            disabled={!isApproved}
+            className="px-6 py-3 text-white text-[12px] font-semibold uppercase tracking-[0.15em] transition-colors disabled:opacity-40 disabled:cursor-not-allowed w-full sm:w-auto"
+            style={{
+              background: isApproved ? TM_RED : '#9CA3AF',
+              fontFamily: FONT_SANS,
+              borderRadius: '2px',
+            }}
+          >
+            Save and continue
+          </button>
+        </div>
       </main>
 
       {/* Summary Modal */}
