@@ -251,6 +251,56 @@ function CustomizeApp() {
     }
   }, [])
 
+  // === Iframe auto-resize: send our content height to the parent window ===
+  // This lets the Shopify page resize the iframe so there's only ONE scrollbar
+  // (the outer Shopify page), not two.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const sendHeight = () => {
+      const h = Math.max(
+        document.body.scrollHeight,
+        document.documentElement.scrollHeight,
+        document.body.offsetHeight,
+        document.documentElement.offsetHeight,
+      )
+      // Only post if there's a parent (i.e., we're embedded in an iframe)
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: 'customize-resize', height: h }, '*')
+      }
+    }
+
+    // Send initial height after a tick (let layout settle)
+    const t1 = window.setTimeout(sendHeight, 100)
+    const t2 = window.setTimeout(sendHeight, 500)
+    const t3 = window.setTimeout(sendHeight, 1500)
+
+    // ResizeObserver — re-measure when the DOM changes size
+    const ro = new ResizeObserver(() => sendHeight())
+    ro.observe(document.body)
+    ro.observe(document.documentElement)
+
+    // Re-measure on window resize (mobile address bar show/hide, orientation)
+    window.addEventListener('resize', sendHeight)
+
+    // Listen for parent asking us to re-measure
+    const onMessage = (e: MessageEvent) => {
+      if (e.data && e.data.type === 'customize-measure') {
+        sendHeight()
+      }
+    }
+    window.addEventListener('message', onMessage)
+
+    return () => {
+      window.clearTimeout(t1)
+      window.clearTimeout(t2)
+      window.clearTimeout(t3)
+      ro.disconnect()
+      window.removeEventListener('resize', sendHeight)
+      window.removeEventListener('message', onMessage)
+    }
+  }, [])
+
   // === Canvas Actions ===
 
   const resetCanvas = () => {
@@ -622,7 +672,7 @@ function CustomizeApp() {
 
   return (
     <div
-      className="min-h-screen flex flex-col"
+      className="flex flex-col"
       style={{
         background: '#FFFFFF',
         fontFamily: FONT_SANS,
@@ -631,51 +681,13 @@ function CustomizeApp() {
     >
       {/* Top bar */}
       <header
-        className="sticky top-0 z-20 border-b"
+        className="border-b"
         style={{
           background: '#FFFFFF',
           borderColor: TM_BORDER,
         }}
       >
-        {/* <div className="mx-auto max-w-[1300px] px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
      
-          <div className="flex items-center gap-2 shrink-0">
-            <span
-              className="text-xl sm:text-2xl font-semibold leading-none"
-              style={{ fontFamily: FONT_SERIF, color: TM_NAVY, letterSpacing: '0.02em' }}
-            >
-              TROPHY{' '}
-              <span style={{ color: TM_RED }}>MART</span>
-            </span>
-            <span
-              className="block w-8 h-px"
-              style={{ background: TM_RED }}
-              aria-hidden
-            />
-          </div>
-
-      
-          <div className="hidden sm:flex flex-col items-center leading-none">
-            <span
-              className="block w-10 h-px mb-1"
-              style={{ background: TM_GOLD }}
-              aria-hidden
-            />
-            <span
-              className={eyebrowClass}
-              style={{ color: TM_RED, fontSize: '11px' }}
-            >
-              Customization Studio
-            </span>
-          </div>
-
-          <div
-            className="hidden md:block text-[12px] uppercase tracking-[0.15em]"
-            style={{ color: TM_BODY }}
-          >
-            Design your trophy
-          </div>
-        </div> */}
 
         {/* Breadcrumb strip */}
         <div
@@ -705,7 +717,7 @@ function CustomizeApp() {
       </header>
 
       {/* Main layout */}
-      <main className="mx-auto w-full max-w-[1300px] flex-1 flex flex-col lg:flex-row gap-8 p-4 sm:p-6 lg:p-8">
+      <main className="mx-auto w-full max-w-[1300px] flex-1 flex flex-col lg:flex-row gap-8 p-4 sm:p-6 lg:p-8 pb-24 sm:pb-8">
         {/* Canvas area */}
         <section className="flex-1 flex flex-col min-h-0">
           {/* Eyebrow + product title (serif) */}
@@ -779,7 +791,7 @@ function CustomizeApp() {
               {/* Fabric canvas wrapper */}
               <div
                 ref={canvasContainerRef}
-                className="relative flex-1 min-h-[400px] sm:min-h-[480px] border overflow-hidden"
+                className="relative flex-1 min-h-[320px] sm:min-h-[440px] border overflow-hidden"
                 style={{
                   borderColor: TM_BORDER,
                   backgroundColor: '#F4F4F4',
