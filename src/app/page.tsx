@@ -723,8 +723,7 @@ function CustomizeApp() {
           borderColor: TM_BORDER,
         }}
       >
-       
-
+        
         {/* Breadcrumb strip */}
         <div
           className="border-t"
@@ -1211,7 +1210,7 @@ function CustomizeApp() {
       {/* Summary Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent
-          className="!max-w-5xl w-[95vw] max-h-[90vh] overflow-y-auto"
+          className="!max-w-5xl w-[95vw]"
           style={{
             borderRadius: '4px',
             fontFamily: FONT_SANS,
@@ -1500,7 +1499,7 @@ function CustomizeApp() {
         }}
       >
         <DialogContent
-          className="max-w-md max-h-[90vh] overflow-y-auto"
+          className="max-w-md"
           style={{ borderRadius: '4px', fontFamily: FONT_SANS }}
         >
           <DialogHeader>
