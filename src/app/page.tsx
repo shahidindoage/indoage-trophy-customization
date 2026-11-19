@@ -355,6 +355,9 @@ function CustomizeApp() {
     setTextDraft(DEFAULT_TEXT_DRAFT)
     setEditingTextId(null)
     setIsTextModalOpen(true)
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
   }
 
   const findObjectById = (id: string): ElementObject | null => {
@@ -381,6 +384,9 @@ function CustomizeApp() {
     })
     setEditingTextId(id)
     setIsTextModalOpen(true)
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
   }
 
   const applyTextDraft = () => {
@@ -644,6 +650,11 @@ function CustomizeApp() {
     }
     exportDesign()
     setIsModalOpen(true)
+    // Scroll to top so the absolute-positioned modal is visible
+    // (modal uses position: absolute; top: 16px relative to body)
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
   }
 
   // === Submit form ===
@@ -723,7 +734,6 @@ function CustomizeApp() {
           borderColor: TM_BORDER,
         }}
       >
-        
         {/* Breadcrumb strip */}
         <div
           className="border-t"
