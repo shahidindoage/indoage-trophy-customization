@@ -337,6 +337,38 @@ function CustomizeApp() {
     }
   }, [])
 
+  // === Iframe viewport height (for scrollable popups) ===
+  // The iframe is taller than the phone screen, so 100dvh clips the dialogs.
+  // Ask the host page for its visible height and expose it as --parent-vh.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const apply = (h: number) => {
+      if (!h || h < 100) return
+      document.documentElement.style.setProperty('--parent-vh', `${h}px`)
+    }
+
+    const onMessage = (e: MessageEvent) => {
+      if (e.data && e.data.type === 'customize-viewport') apply(e.data.height)
+    }
+    window.addEventListener('message', onMessage)
+
+    // Ask once on mount and again shortly after (layout may settle late).
+    const ask = () => {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: 'customize-viewport-request' }, '*')
+      }
+    }
+    const t1 = window.setTimeout(ask, 50)
+    const t2 = window.setTimeout(ask, 600)
+
+    return () => {
+      window.clearTimeout(t1)
+      window.clearTimeout(t2)
+      window.removeEventListener('message', onMessage)
+    }
+  }, [])
+
   // === Canvas Actions ===
 
   const resetCanvas = () => {
@@ -351,13 +383,22 @@ function CustomizeApp() {
     setUploadedImages([])
   }
 
+  // Ask the parent page (Shopify) to scroll our iframe into view. Inside an
+  // iframe the document itself usually doesn't scroll — the parent page does —
+  // so window.scrollTo() alone leaves the popup off-screen.
+  const scrollParentToIframe = () => {
+    if (typeof window === 'undefined') return
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'customize-scroll-top' }, '*')
+    }
+  }
+
   const openTextModalForNew = () => {
     setTextDraft(DEFAULT_TEXT_DRAFT)
     setEditingTextId(null)
     setIsTextModalOpen(true)
-    if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-    }
+    scrollParentToIframe()
   }
 
   const findObjectById = (id: string): ElementObject | null => {
@@ -384,9 +425,7 @@ function CustomizeApp() {
     })
     setEditingTextId(id)
     setIsTextModalOpen(true)
-    if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-    }
+    scrollParentToIframe()
   }
 
   const applyTextDraft = () => {
@@ -625,21 +664,57 @@ function CustomizeApp() {
     const canvas = fabricRef.current
     if (!canvas) return
 
-    // The printable area is now a CSS div (not a Fabric object), so there's
-    // nothing on the canvas to hide/restore — just clear the active selection
-    // (so the selection handles don't appear in the exported PNG), export,
-    // then restore the selection.
+    // The printable area is a CSS div (not a Fabric object), so just clear the
+    // active selection (so selection handles don't appear in the export).
     const previousActive = canvas.getActiveObject()
     canvas.discardActiveObject()
     canvas.renderAll()
 
-    const dataUrl = canvas.toDataURL({ format: 'png', multiplier: 2 })
+    const designUrl = canvas.toDataURL({ format: 'png', multiplier: 2 })
 
     if (previousActive) canvas.setActiveObject(previousActive)
     canvas.renderAll()
 
-    setCanvasPreview(dataUrl)
     setPreviewSize({ width: canvas.getWidth(), height: canvas.getHeight() })
+
+    // Build a preview that matches the product: black outside the printable
+    // area, white printable band, design clipped to the band.
+    const isDesktop =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(min-width: 768px)').matches
+    const bandLeftPct = isDesktop ? 0.32 : 0.15
+    const bandWidthPct = isDesktop ? 0.36 : 0.7
+
+    const img = new Image()
+    img.onload = () => {
+      const out = document.createElement('canvas')
+      out.width = img.naturalWidth
+      out.height = img.naturalHeight
+      const ctx = out.getContext('2d')
+      if (!ctx) {
+        setCanvasPreview(designUrl)
+        return
+      }
+
+      ctx.fillStyle = '#000000'
+      ctx.fillRect(0, 0, out.width, out.height)
+
+      const bandX = out.width * bandLeftPct
+      const bandW = out.width * bandWidthPct
+      ctx.fillStyle = '#FFFFFF'
+      ctx.fillRect(bandX, 0, bandW, out.height)
+
+      ctx.save()
+      ctx.beginPath()
+      ctx.rect(bandX, 0, bandW, out.height)
+      ctx.clip()
+      ctx.drawImage(img, 0, 0)
+      ctx.restore()
+
+      setCanvasPreview(out.toDataURL('image/png'))
+    }
+    img.onerror = () => setCanvasPreview(designUrl)
+    img.src = designUrl
   }
 
   const handleSaveAndContinue = async () => {
@@ -650,11 +725,9 @@ function CustomizeApp() {
     }
     exportDesign()
     setIsModalOpen(true)
-    // Scroll to top so the absolute-positioned modal is visible
-    // (modal uses position: absolute; top: 16px relative to body)
-    if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-    }
+    // Scroll to top so the fixed-position modal is visible. Inside the Shopify
+    // iframe the outer page must scroll, so also ask the parent to do it.
+    scrollParentToIframe()
   }
 
   // === Submit form ===
@@ -680,6 +753,9 @@ function CustomizeApp() {
           productName,
           canvasImage: canvasPreview,
           uploadedImages,
+          quantity,
+          printingMaterial: PRINTING_MATERIAL,
+          personalization: 'All items same',
           customer: form,
         }),
       })

@@ -11,6 +11,9 @@ import nodemailer from 'nodemailer'
 
 export interface CustomizationEmailData {
   productName: string
+  quantity?: number
+  printingMaterial?: string
+  personalization?: string
   customer: {
     name: string
     email: string
@@ -80,6 +83,20 @@ function buildHtml(data: CustomizationEmailData): string {
             <td style="padding:24px 32px;border-bottom:1px solid #e2e8f0;">
               <p style="margin:0 0 4px;font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Product</p>
               <p style="margin:0;font-size:16px;font-weight:600;color:#0f172a;">${escapeHtml(data.productName)}</p>
+              <table role="presentation" width="100%" style="font-size:14px;margin-top:12px;">
+                <tr>
+                  <td style="padding:4px 0;color:#64748b;width:140px;">Quantity</td>
+                  <td style="padding:4px 0;color:#0f172a;font-weight:500;">${data.quantity ?? '—'}</td>
+                </tr>
+                <tr>
+                  <td style="padding:4px 0;color:#64748b;">Printing Material</td>
+                  <td style="padding:4px 0;color:#0f172a;">${escapeHtml(data.printingMaterial || '—')}</td>
+                </tr>
+                <tr>
+                  <td style="padding:4px 0;color:#64748b;">Personalization</td>
+                  <td style="padding:4px 0;color:#0f172a;">${escapeHtml(data.personalization || '—')}</td>
+                </tr>
+              </table>
             </td>
           </tr>
 
@@ -177,6 +194,9 @@ export async function sendCustomizationEmail(data: CustomizationEmailData): Prom
     text: `New customization request
 
 Product: ${data.productName}
+Quantity: ${data.quantity ?? '—'}
+Printing Material: ${data.printingMaterial || '—'}
+Personalization: ${data.personalization || '—'}
 Customer: ${data.customer.name}
 Email: ${data.customer.email}
 Phone: ${data.customer.phone || '—'}

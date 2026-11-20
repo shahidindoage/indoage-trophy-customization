@@ -122,3 +122,21 @@
     min-height: 100%;
   }
 }
+
+/* Dialog body scroll.
+   Inside the Shopify iframe 100dvh is the whole iframe, which is taller than
+   the visible screen on mobile, so cap against the parent viewport height that
+   the host page reports via --parent-vh (falls back to 100dvh). */
+.dialog-scroll-area {
+  max-height: calc(min(100dvh, var(--parent-vh, 100dvh)) - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.dialog-scroll-area::-webkit-scrollbar {
+  display: none;
+}

@@ -25,6 +25,9 @@ interface SubmitBody {
   productName: string
   canvasImage: string
   uploadedImages: { name: string; dataUrl: string }[]
+  quantity?: number
+  printingMaterial?: string
+  personalization?: string
   customer: { name: string; email: string; phone: string; message: string }
 }
 
@@ -66,6 +69,9 @@ export async function POST(req: Request) {
     // 3. Send admin email
     await sendCustomizationEmail({
       productName: body.productName,
+      quantity: body.quantity,
+      printingMaterial: body.printingMaterial,
+      personalization: body.personalization,
       customer: body.customer,
       designImage: {
         name: designImage.name,
